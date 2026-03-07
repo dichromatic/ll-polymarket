@@ -4,14 +4,15 @@ import { prisma } from '$lib/server/prisma';
 
 function createMockRequest(body: any, auth: string = 'dev_internal_token_123'): any {
     return {
-        request: new Request('http://localhost:5173/api/internal/market/void', {
+        request: new Request('http://localhost', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${auth}`
             },
             body: JSON.stringify(body)
-        })
+        }),
+        url: new URL('http://localhost')
     };
 }
 

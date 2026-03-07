@@ -141,3 +141,23 @@ model Transaction {
   
   createdAt DateTime        @default(now())
 }
+
+// ==========================================
+// SYSTEM AUDITING
+// ==========================================
+
+enum AdminActionType {
+  MARKET_CREATED
+  MARKET_RESOLVED
+  MARKET_VOIDED
+  FUNDS_GRANTED
+}
+
+model AuditLog {
+  id        String          @id @default(uuid())
+  action    AdminActionType
+  entityId  String          // ID of the Market, Event, or User affected
+  actorId   String          // ID of the User/Admin who triggered it, or 'SYSTEM'
+  details   Json?           // Flexible payload for state snapshots
+  createdAt DateTime        @default(now())
+}

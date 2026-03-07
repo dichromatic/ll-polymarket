@@ -11,7 +11,8 @@ function createMockRequest(body: any, auth: string = 'dev_internal_token_123'): 
                 'Authorization': `Bearer ${auth}`
             },
             body: JSON.stringify(body)
-        })
+        }),
+        url: new URL('http://localhost')
     };
 }
 

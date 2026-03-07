@@ -1,7 +1,9 @@
 import { json } from '@sveltejs/kit';
 import { prisma } from '$lib/server/prisma';
+import { createAuditLog } from '$lib/server/audit';
+import { AdminActionType } from '@prisma/client';
 
-export async function POST({ request }) {
+export async function POST({ request, url }: { request: Request; url: URL }) {
     // 1. Internal Auth Check
     const authHeader = request.headers.get('Authorization');
     const validToken = process.env.INTERNAL_API_TOKEN || 'dev_internal_token_123';
@@ -10,9 +12,11 @@ export async function POST({ request }) {
         return json({ error: 'Forbidden API access' }, { status: 403 });
     }
 
+    const adminId = url.searchParams.get('adminId') || 'SYSTEM';
+
     try {
         const body = await request.json();
-        const { marketId } = body;
+        const { marketId, reason } = body;
 
         if (!marketId) {
             return json({ error: 'Missing marketId parameter' }, { status: 400 });
@@ -88,6 +92,15 @@ export async function POST({ request }) {
                     data: { isWinner: false }
                 });
             }
+
+            // 5. Append system Audit Log
+            await createAuditLog(
+                AdminActionType.MARKET_VOIDED,
+                market.id,
+                adminId,
+                { reason: reason || 'N/A', refundsProcessed: processedCount },
+                tx
+            );
 
             return { success: true, refundsProcessed: processedCount };
         }, { maxWait: 15000, timeout: 30000 });
