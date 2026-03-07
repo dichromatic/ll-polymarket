@@ -1,0 +1,143 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// CORE PLATFORM TAXONOMY
+// ==========================================
+
+model User {
+  id           String        @id // Discord ID
+  username     String
+  balance      Float         @default(1000.0) // Play-money economy
+  isAdmin      Boolean       @default(false)
+  markets      Market[]      @relation("CreatedMarkets")
+  positions    Position[]
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  events      Event[]
+}
+
+enum EventStatus {
+  UPCOMING
+  LIVE
+  RESOLVED
+  CANCELED
+}
+
+model Event {
+  id          String      @id @default(uuid())
+  categoryId  String
+  category    Category    @relation(fields: [categoryId], references: [id])
+  name        String
+  description String?
+  status      EventStatus @default(UPCOMING)
+  markets     Market[]
+  createdAt   DateTime    @default(now())
+}
+
+// ==========================================
+// MARKET MECHANICS & TEMPLATES
+// ==========================================
+
+enum MarketTier {
+  MAIN_BOARD
+  SANDBOX
+}
+
+enum MarketTemplate {
+  BINARY
+  MULTIPLE_CHOICE
+  NUMERIC_BUCKET
+  MULTI_WINNER
+}
+
+enum MarketStatus {
+  PROPOSED
+  VOTING
+  OPEN
+  RESOLVED
+  DISPUTED
+  VOIDED
+}
+
+model Market {
+  id              String         @id @default(uuid())
+  eventId         String
+  event           Event          @relation(fields: [eventId], references: [id])
+  creatorId       String
+  creator         User           @relation("CreatedMarkets", fields: [creatorId], references: [id])
+  
+  tier            MarketTier
+  template        MarketTemplate
+  status          MarketStatus   @default(PROPOSED)
+  
+  question        String
+  resolutionRules String         // Strict criteria defining a "winning" condition
+  liquidity_b     Float          // AMM depth parameter
+  
+  outcomes        Outcome[]
+  transactions    Transaction[]
+  
+  resolvedAt      DateTime?
+  createdAt       DateTime       @default(now())
+}
+
+model Outcome {
+  id                String     @id @default(uuid())
+  marketId          String
+  market            Market     @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  name              String
+  sharesOutstanding Float      @default(0.0)
+  isWinner          Boolean?   // Null = Unresolved, True = Won, False = Lost
+  positions         Position[]
+}
+
+// ==========================================
+// TRADING & ECONOMY
+// ==========================================
+
+model Position {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  outcomeId   String
+  outcome     Outcome  @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  sharesOwned Float    @default(0.0)
+  averageCost Float    @default(0.0) // Used to calculate ROI on Portfolio dashboard
+  
+  @@unique([userId, outcomeId]) // One position row per outcome per user
+}
+
+enum TransactionType {
+  BUY
+  SELL
+  RESOLVE     // Payout upon market closure
+  MINT_FEE    // Deduction for creating a Sandbox market
+  REFUND      // Used if a market is VOIDED
+}
+
+model Transaction {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id])
+  marketId  String
+  market    Market          @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  type      TransactionType
+  amount    Float           // Points exchanged (positive = gained, negative = spent)
+  shares    Float?          // Shares received (relevant for BUY/SELL/RESOLVE)
+  
+  createdAt DateTime        @default(now())
+}

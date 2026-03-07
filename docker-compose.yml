@@ -1,0 +1,60 @@
+version: '3.3'
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: polymarket
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: polymarket
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - polymarket-network
+
+  web:
+    image: node:20
+    working_dir: /usr/src/app
+    volumes:
+      - ./web:/usr/src/app
+    environment:
+      # SvelteKit dev server configuration
+      - HOST=0.0.0.0
+      # Internal Prisma connection mapped to the db container
+      - DATABASE_URL=postgresql://polymarket:password@db:5432/polymarket?schema=public
+      # Shared internal secret for Bot -> Web API authentication
+      - INTERNAL_API_TOKEN=dev_internal_token_123
+    ports:
+      - "5173:5173"
+    command: npm run dev -- --host 0.0.0.0
+    restart: unless-stopped
+    depends_on:
+      - db
+    networks:
+      - polymarket-network
+
+  bot:
+    image: node:20
+    working_dir: /usr/src/app
+    volumes:
+      - ./bot:/usr/src/app
+    environment:
+      # Discord bot token overrides (Will be provided by env files in prod)
+      - DISCORD_TOKEN=${DISCORD_TOKEN:-mock_token_for_dev}
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:-mock_id}
+      # The Bot talks to the Web API via internal Docker DNS, never the public web directly
+      - STRAPI_API_URL=http://web:5173/api/internal
+      - STRAPI_API_TOKEN=dev_internal_token_123
+    command: npm run dev
+    restart: unless-stopped
+    depends_on:
+      - web
+    networks:
+      - polymarket-network
+
+networks:
+  polymarket-network:
+    driver: bridge
