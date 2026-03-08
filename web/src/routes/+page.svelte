@@ -1,4 +1,6 @@
 <script lang="ts">
+    import ActivityTicker from '$lib/components/ActivityTicker.svelte';
+
     let { data } = $props<{
         data: {
             categories: Array<{
@@ -24,7 +26,9 @@
     }>();
 </script>
 
-<div class="mb-12 text-center sm:text-left">
+<ActivityTicker />
+
+<div class="mb-12 text-center sm:text-left mt-4">
     <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-3">Concert Tours & Festivals</h1>
     <p class="text-lg opacity-70">Explore active predictions on the biggest live events.</p>
 </div>

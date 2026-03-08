@@ -1,11 +1,8 @@
-import { prisma } from '$lib/server/prisma';
+import type { LayoutServerLoad } from './$types';
 
-// Quick mock for auth, returning the first user in the DB
-export async function load() {
-    // Return u1 deterministically so the user session doesn't flip around
-    const user = await prisma.user.findUnique({ where: { id: 'u1' } });
-
+export const load: LayoutServerLoad = async ({ locals }) => {
     return {
-        user: user || { id: 'guest', username: 'Guest', balance: 0 }
+        user: locals.user || { id: 'guest', username: 'Guest', balance: 0 }
     };
-}
+};
+

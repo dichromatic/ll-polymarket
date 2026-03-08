@@ -16,7 +16,7 @@
 </script>
 
 <div class="min-h-screen bg-base-300">
-    <Navbar userBalance={data.user.balance} />
+    <Navbar userBalance={data.user.balance} userId={data.user.id} />
     <main class="container mx-auto py-8 px-4">
         {@render children()}
     </main>

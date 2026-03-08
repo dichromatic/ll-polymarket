@@ -34,7 +34,12 @@ describe('Event Profile Page', () => {
                     { id: 'o4', name: 'No', sharesOutstanding: 450 }
                 ]
             }
-        ]
+        ],
+        filters: {
+            q: '',
+            tier: null,
+            template: null
+        }
     };
 
     it('renders the event header and parent tour link', () => {

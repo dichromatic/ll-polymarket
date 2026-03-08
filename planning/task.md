@@ -1,0 +1,47 @@
+# Task List for Polymarket Clone (V2)
+
+- [x] Planning Phase (V2)
+  - [x] Archive toy model codebase
+  - [x] Create updated implementation plan for robust monorepo architecture
+  - [x] Create feature roadmap based on RULES.md
+  - [x] Draft coding guidelines (Red/Green TDD)
+  - [x] Get user approval for the new architecture and roadmap
+- [x] Initialization & Infrastructure
+  - [x] Setup robust monorepo structure (`web` and `bot` directories)
+  - [x] Reconfigure `docker-compose.yml` for the new architecture
+  - [x] Re-initialize SvelteKit and Tailwind CSS for the web dashboard
+- [x] Phase 1A: Backend & Database (TDD Driven)
+  - [x] Write the rigorous Prisma schema aligned precisely with `RULES.md`
+  - [x] Setup Vitest testing environment
+  - [x] Port and fortify LMSR AMM math logic with full test coverage
+  - [x] Create robust internal API endpoints (Propose, Vote, Trade, Resolve) via TDD
+  - [x] Run Phase 1A Load Simulation Script
+  - [x] Run Phase 1A Complex Load Simulation Script (Multi-Event, Multi-Market)
+- [x] Phase 1B: Frontend Dashboard (UI/UX Focus, TDD Driven)
+  - [x] Setup Svelte component testing environment
+  - [x] Build production-ready dashboard and portfolio views via TDD
+  - [x] Implement modals/popups for trading and resolution actions via TDD
+  - [x] Ensure seamless state synchronization
+  - [x] Run Phase 1B End-to-End UI Simulation
+- [x] Phase 1C: UI Navigation & Analytics Refactor
+  - [x] Draft UI architecture and routing design document
+  - [x] Implement Category Explorer landing page (`/`) via TDD
+  - [x] Implement Category Profile page (`/c/[categoryId]`) via TDD
+  - [x] Implement Event Profile page (`/e/[eventId]`) via TDD
+  - [x] Implement Market Detailed Analysis page (`/m/[marketId]`) via TDD
+  - [x] Migrate Trading and Resolution interactions to Market detail page
+  - [x] Integrate historical archives natively inline into Landing, Category, and Event pages
+- [x] Phase 2: Advanced Mechanics (TDD Driven)
+  - [x] Build 'Sell' mechanism (cash out) API and UI via TDD
+  - [x] Implement varied market templates (Multiple Choice, Numeric, etc.) via TDD
+  - [x] Run Phase 2 Complex Market Resolution / Edge Case Simulation
+- [x] Phase 3: Polish & Scale (TDD Driven)
+  - [x] Edge case test suites (Cancelations, Refunds, Math Precision) via TDD (Backend Done)
+  - [x] Implement Data Polling / WebSocket updates for real-time reactivity
+  - [x] Implement Audit logging API via TDD
+- [/] Phase 4: Discord Bot Integration (Final, TDD Driven)
+  - [ ] Initialize `discord.js` project
+  - [ ] Implement slash command routing and `/propose` flow via TDD
+  - [ ] Implement Discord-based dispute tribunal logic via TDD
+  - [ ] Hook bot actions to Web API
+  - [ ] Run final Live Discord Simulation

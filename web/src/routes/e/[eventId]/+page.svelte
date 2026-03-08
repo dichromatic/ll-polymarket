@@ -1,5 +1,6 @@
 <script lang="ts">
     import MarketList from '$lib/components/MarketList.svelte';
+    import MarketFilterBar from '$lib/components/MarketFilterBar.svelte';
 
     let { data } = $props<{
         data: {
@@ -15,6 +16,11 @@
             };
             activeMarkets: Array<any>;
             resolvedMarkets: Array<any>;
+            filters: {
+                q: string;
+                tier: string | null;
+                template: string | null;
+            }
         }
     }>();
 </script>
@@ -37,6 +43,8 @@
         </div>
     </div>
 </div>
+
+<MarketFilterBar currentFilters={data.filters} />
 
 <section class="mb-12">
     <div class="flex items-center gap-2 mb-6 border-b border-base-300 pb-2">

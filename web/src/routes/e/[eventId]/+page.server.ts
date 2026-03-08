@@ -1,7 +1,8 @@
 import { prisma } from '$lib/server/prisma';
 import { error } from '@sveltejs/kit';
+import { MarketTier, MarketTemplate } from '@prisma/client';
 
-export async function load({ params }) {
+export async function load({ params, url }) {
     const { eventId } = params;
 
     const event = await prisma.event.findUnique({
@@ -15,9 +16,18 @@ export async function load({ params }) {
         throw error(404, 'Event not found');
     }
 
+    const q = url.searchParams.get('q') || '';
+    const tier = url.searchParams.get('tier') as MarketTier | null;
+    const template = url.searchParams.get('template') as MarketTemplate | null;
+
+    const baseFilter: any = { eventId: event.id };
+    if (q) baseFilter.question = { contains: q, mode: 'insensitive' };
+    if (tier) baseFilter.tier = tier;
+    if (template) baseFilter.template = template;
+
     const activeMarkets = await prisma.market.findMany({
         where: {
-            eventId: event.id,
+            ...baseFilter,
             status: { in: ['PROPOSED', 'OPEN', 'DISPUTED'] }
         },
         include: {
@@ -28,7 +38,7 @@ export async function load({ params }) {
 
     const resolvedMarkets = await prisma.market.findMany({
         where: {
-            eventId: event.id,
+            ...baseFilter,
             status: { in: ['RESOLVED', 'VOIDED'] }
         },
         include: {
@@ -40,6 +50,7 @@ export async function load({ params }) {
     return {
         event,
         activeMarkets,
-        resolvedMarkets
+        resolvedMarkets,
+        filters: { q, tier, template }
     };
 }
