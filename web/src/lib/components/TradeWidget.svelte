@@ -1,6 +1,7 @@
 <script lang="ts">
     import { page } from '$app/stores';
     import { invalidateAll } from '$app/navigation';
+    import { LMSR } from '$lib/amm/lmsr';
 
     let { market, userPositions = [] } = $props<{
         market: any;
@@ -24,6 +25,33 @@
 
     let selectedPosition = $derived(userPositions.find((p: { outcomeId: string, sharesOwned: number }) => p.outcomeId === selectedOutcomeId));
     let hasPositions = $derived(userPositions.length > 0);
+
+    let currentSharesArray = $derived(market.outcomes.map((o: any) => o.sharesOutstanding));
+    let currentPrices = $derived(LMSR.getPrices(market.liquidity_b, currentSharesArray));
+
+    let estimatedResult = $derived.by(() => {
+        if (!amountStr || !selectedOutcomeId) return null;
+        const amount = parseFloat(amountStr);
+        if (isNaN(amount) || amount <= 0) return null;
+        
+        const outcomeIndex = market.outcomes.findIndex((o: any) => o.id === selectedOutcomeId);
+        if (outcomeIndex === -1) return null;
+
+        try {
+            if (mode === 'BUY') {
+                const { UO } = LMSR.getMaxSharesForPoints(market.liquidity_b, currentSharesArray, outcomeIndex, amount);
+                return { UO, UO: amount };
+            } else {
+                const pos = userPositions.find((p: any) => p.outcomeId === selectedOutcomeId);
+                if (!pos || amount > pos.sharesOwned) return null;
+                
+                const { refund } = LMSR.getRefundForShares(market.liquidity_b, currentSharesArray, outcomeIndex, amount);
+                return { UO: amount, UO: refund };
+            }
+        } catch (e) {
+            return null;
+        }
+    });
 
     async function handleTrade() {
         if (!selectedOutcomeId || !amountStr) return;
@@ -81,14 +109,14 @@
                 class="tab flex-1 transition-all rounded-md {mode === 'BUY' ? 'tab-active font-bold shadow-sm' : 'opacity-70 hover:opacity-100'}"
                 onclick={() => mode = 'BUY'}
             >
-                Buy Shares
+                Buy UO
             </button>
             <button 
                 class="tab flex-1 transition-all rounded-md {mode === 'SELL' ? 'tab-active font-bold shadow-sm' : 'opacity-70 hover:opacity-100'}"
                 onclick={() => mode = 'SELL'}
                 disabled={!hasPositions}
             >
-                Sell Shares
+                Sell UO
             </button>
         </div>
         
@@ -100,7 +128,7 @@
 
         {#if mode === 'SELL' && !hasPositions}
             <div class="text-center opacity-70 my-8">
-                You do not own any shares in this market to sell.
+                You do not own any UO in this market to sell.
             </div>
         {:else}
             <div class="form-control mb-6">
@@ -118,7 +146,10 @@
                                 >
                                     <span class="font-extrabold text-2xl {i === 0 ? 'text-primary' : 'text-secondary'}">{outcome.name}</span>
                                     {#if mode === 'BUY'}
-                                        <span class="text-sm opacity-70 badge badge-ghost">{Math.round(outcome.sharesOutstanding)} shares volume</span>
+                                        <div class="flex flex-col items-center">
+                                            <span class="text-sm font-bold text-primary">{Math.round(currentPrices[i] * 100)}¢</span>
+                                            <span class="text-[10px] opacity-60">Price per share</span>
+                                        </div>
                                     {:else if mode === 'SELL' && pos}
                                         <span class="text-sm font-semibold badge badge-outline border-secondary text-secondary">{pos.sharesOwned.toFixed(2)} held</span>
                                     {/if}
@@ -129,7 +160,7 @@
                 {:else}
                     <!-- STANDARD LIST: Used for non-binary -->
                     <div class="flex flex-col gap-3 mb-6">
-                        {#each market.outcomes as outcome}
+                        {#each market.outcomes as outcome, i}
                             {@const pos = userPositions.find((p: { outcomeId: string, sharesOwned: number }) => p.outcomeId === outcome.id)}
                             {#if mode === 'BUY' || (mode === 'SELL' && pos && pos.sharesOwned > 0)}
                                 <label class="label cursor-pointer flex justify-start gap-4 p-4 bg-base-200 rounded-lg border-2 {selectedOutcomeId === outcome.id ? (mode === 'BUY' ? 'border-primary bg-primary/10' : 'border-secondary bg-secondary/10') : 'border-transparent hover:border-base-300'} transition-all">
@@ -143,7 +174,9 @@
                                     />
                                     <div class="flex flex-row justify-between w-full pr-2 items-center">
                                         <span class="label-text font-bold text-lg">{outcome.name}</span>
-                                        {#if mode === 'SELL' && pos}
+                                        {#if mode === 'BUY'}
+                                            <span class="badge badge-primary badge-outline font-bold">{Math.round(currentPrices[i] * 100)}¢</span>
+                                        {:else if mode === 'SELL' && pos}
                                             <span class="badge badge-outline">{pos.sharesOwned.toFixed(2)} held</span>
                                         {/if}
                                     </div>
@@ -156,20 +189,49 @@
 
             <div class="form-control mb-6">
                 <label class="label" for="amount">
-                    <span class="label-text font-semibold text-sm opacity-80">{mode === 'BUY' ? 'Points to Spend' : 'Shares to Sell'}</span>
+                    <span class="label-text font-semibold text-sm opacity-80">{mode === 'BUY' ? 'UO to Spend (Cost)' : 'UO to Sell'}</span>
                     {#if mode === 'SELL' && selectedPosition}
                         <span class="label-text-alt opacity-70">Max: {selectedPosition.sharesOwned.toFixed(2)}</span>
                     {/if}
                 </label>
-                <input 
-                    id="amount"
-                    type="number" 
-                    placeholder={mode === 'BUY' ? "e.g. 50" : "Number of shares"} 
-                    class="input input-bordered input-lg w-full font-mono font-bold {mode === 'SELL' ? 'focus:border-secondary' : ''}" 
-                    bind:value={amountStr}
-                    min="1"
-                    max={mode === 'SELL' && selectedPosition ? selectedPosition.sharesOwned : undefined}
-                />
+                <div class="join w-full">
+                    {#if mode === 'BUY'}
+                        <span class="join-item bg-base-300 flex items-center px-4 font-mono font-bold border border-base-content/20">UO</span>
+                    {/if}
+                    <input 
+                        id="amount"
+                        type="number" 
+                        placeholder={mode === 'BUY' ? "e.g. 50" : "Number of UO"} 
+                        class="input input-bordered input-lg w-full font-mono font-bold join-item {mode === 'SELL' ? 'focus:border-secondary' : ''}" 
+                        bind:value={amountStr}
+                        min="1"
+                        max={mode === 'SELL' && selectedPosition ? selectedPosition.sharesOwned : undefined}
+                    />
+                    {#if mode === 'SELL'}
+                        <span class="join-item bg-base-300 flex items-center px-4 font-mono font-bold border border-base-content/20">UO</span>
+                    {/if}
+                </div>
+            </div>
+
+            <!-- Estimation feedback -->
+            <div class="min-h-[3rem] mb-4 flex items-center justify-center bg-base-200/50 rounded-lg p-3 border border-base-300">
+                {#if estimatedResult}
+                    {#if mode === 'BUY'}
+                        <div class="text-center text-sm">
+                            Est. Return: <span class="font-bold text-success">+{estimatedResult.UO.toFixed(2)} UO</span>
+                            <br/>
+                            <span class="opacity-60 text-xs">(Avg price: {Math.round((estimatedResult.UO / estimatedResult.UO) * 100)}¢ per share)</span>
+                        </div>
+                    {:else}
+                        <div class="text-center text-sm">
+                            Est. Refund: <span class="font-bold text-success">+{estimatedResult.UO.toFixed(2)} UO</span>
+                            <br/>
+                            <span class="opacity-60 text-xs">(Avg sell price: {Math.round((estimatedResult.UO / estimatedResult.UO) * 100)}¢ per share)</span>
+                        </div>
+                    {/if}
+                {:else}
+                    <span class="opacity-50 text-sm">Enter an amount to see estimate</span>
+                {/if}
             </div>
 
             <button 
@@ -183,7 +245,7 @@
                     <span class="loading loading-spinner"></span>
                     Processing...
                 {:else}
-                    {mode === 'BUY' ? 'Confirm Purchase' : 'Liquidate Shares'}
+                    {mode === 'BUY' ? 'Confirm Purchase' : 'Liquidate UO'}
                 {/if}
             </button>
         {/if}

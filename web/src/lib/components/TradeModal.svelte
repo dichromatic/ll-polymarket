@@ -58,7 +58,7 @@
 
             <div class="form-control mb-6">
                 <label class="label">
-                    <span class="label-text">Points to spend</span>
+                    <span class="label-text">UO to spend</span>
                 </label>
                 <input 
                     type="number" 

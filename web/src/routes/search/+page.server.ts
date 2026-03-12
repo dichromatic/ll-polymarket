@@ -21,7 +21,15 @@ export async function load({ url }) {
     const markets = await prisma.market.findMany({
         where: baseFilter,
         include: {
-            outcomes: { orderBy: { id: 'asc' } }
+            outcomes: { orderBy: { id: 'asc' } },
+            event: {
+                select: {
+                    name: true,
+                    category: {
+                        select: { name: true }
+                    }
+                }
+            }
         },
         orderBy: statusFilter === 'RESOLVED' ? { resolvedAt: 'desc' } : { createdAt: 'desc' }
     });

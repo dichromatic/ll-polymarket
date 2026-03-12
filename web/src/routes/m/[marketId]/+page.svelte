@@ -101,7 +101,9 @@
                                         <td class="font-semibold">{tx.user.username}</td>
                                         <td>
                                             {#if tx.type === 'BUY'}
-                                                <span class="text-success font-medium">bought {Math.round(tx.shares)} shares</span>
+                                                <span class="text-success font-medium">bought {Math.round(tx.shares || 0)} shares for {Math.abs(tx.amount).toFixed(0)} pts</span>
+                                            {:else if tx.type === 'SELL'}
+                                                <span class="text-warning font-medium">sold {Math.round(tx.shares || 0)} shares for {Math.abs(tx.amount).toFixed(0)} pts</span>
                                             {:else}
                                                 <span class="text-error font-medium">{tx.type}</span>
                                             {/if}
