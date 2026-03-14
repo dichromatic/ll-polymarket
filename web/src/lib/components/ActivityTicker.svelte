@@ -11,10 +11,12 @@
 
     let activities = $state<ActivityItem[]>([]);
     let loading = $state(true);
+    let prefersReducedMotion = $state(false);
 
     async function fetchActivity() {
         try {
-            const res = await fetch('/api/internal/activity');
+            const activityUrl = new URL('/api/internal/activity', window.location.origin);
+            const res = await fetch(activityUrl.toString());
             if (res.ok) {
                 activities = await res.json();
             }
@@ -26,9 +28,28 @@
     }
 
     onMount(() => {
+        const mediaQuery =
+            typeof window.matchMedia === 'function'
+                ? window.matchMedia('(prefers-reduced-motion: reduce)')
+                : {
+                    matches: false,
+                    addEventListener: (..._args: any[]) => {},
+                    removeEventListener: (..._args: any[]) => {}
+                };
+        prefersReducedMotion = mediaQuery.matches;
+
+        const updateMotionPreference = (event: MediaQueryListEvent) => {
+            prefersReducedMotion = event.matches;
+        };
+
+        mediaQuery.addEventListener('change', updateMotionPreference);
+
         fetchActivity();
         const interval = setInterval(fetchActivity, 15000); // Poll every 15s
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            mediaQuery.removeEventListener('change', updateMotionPreference);
+        };
     });
 
     function formatTime(timestamp: number) {
@@ -51,37 +72,55 @@
         {#if loading && activities.length === 0}
             <span class="opacity-50 animate-pulse">Loading activity...</span>
         {:else if activities.length > 0}
-            <!-- Marquee container -->
-            <div class="flex whitespace-nowrap animate-[marquee_30s_linear_infinite] hover:[animation-play-state:paused] gap-8">
-                {#each activities as item (item.id)}
-                    <a href={item.link} class="flex items-center gap-2 hover:text-primary transition-colors">
-                        {#if item.type === 'TRADE'}
-                            <span class="text-xs badge badge-ghost badge-sm">TRADE</span>
-                        {:else if item.type === 'RESOLUTION'}
-                            <span class="text-xs badge badge-success badge-sm">RESOLVED</span>
-                        {:else}
-                            <span class="text-xs badge badge-info badge-sm">NEW</span>
-                        {/if}
-                        <span>{item.message}</span>
-                        <span class="opacity-50 text-xs ml-1">{formatTime(item.timestamp)}</span>
-                    </a>
-                {/each}
-                
-                <!-- Duplicate for seamless loop if needed -->
-                {#each activities as item (item.id + '-dup')}
-                    <a href={item.link} class="flex items-center gap-2 hover:text-primary transition-colors">
-                        {#if item.type === 'TRADE'}
-                            <span class="text-xs badge badge-ghost badge-sm">TRADE</span>
-                        {:else if item.type === 'RESOLUTION'}
-                            <span class="text-xs badge badge-success badge-sm">RESOLVED</span>
-                        {:else}
-                            <span class="text-xs badge badge-info badge-sm">NEW</span>
-                        {/if}
-                        <span>{item.message}</span>
-                        <span class="opacity-50 text-xs ml-1">{formatTime(item.timestamp)}</span>
-                    </a>
-                {/each}
-            </div>
+            {#if prefersReducedMotion}
+                <div class="flex gap-6 overflow-x-auto whitespace-nowrap pr-4">
+                    {#each activities as item (item.id)}
+                        <a href={item.link} class="flex items-center gap-2 hover:text-primary transition-colors">
+                            {#if item.type === 'TRADE'}
+                                <span class="text-xs badge badge-ghost badge-sm">TRADE</span>
+                            {:else if item.type === 'RESOLUTION'}
+                                <span class="text-xs badge badge-success badge-sm">RESOLVED</span>
+                            {:else}
+                                <span class="text-xs badge badge-info badge-sm">NEW</span>
+                            {/if}
+                            <span>{item.message}</span>
+                            <span class="opacity-50 text-xs ml-1">{formatTime(item.timestamp)}</span>
+                        </a>
+                    {/each}
+                </div>
+            {:else}
+                <!-- Marquee container -->
+                <div class="flex whitespace-nowrap animate-[marquee_30s_linear_infinite] hover:[animation-play-state:paused] gap-8">
+                    {#each activities as item (item.id)}
+                        <a href={item.link} class="flex items-center gap-2 hover:text-primary transition-colors">
+                            {#if item.type === 'TRADE'}
+                                <span class="text-xs badge badge-ghost badge-sm">TRADE</span>
+                            {:else if item.type === 'RESOLUTION'}
+                                <span class="text-xs badge badge-success badge-sm">RESOLVED</span>
+                            {:else}
+                                <span class="text-xs badge badge-info badge-sm">NEW</span>
+                            {/if}
+                            <span>{item.message}</span>
+                            <span class="opacity-50 text-xs ml-1">{formatTime(item.timestamp)}</span>
+                        </a>
+                    {/each}
+
+                    <!-- Duplicate for seamless loop -->
+                    {#each activities as item (item.id + '-dup')}
+                        <a href={item.link} class="flex items-center gap-2 hover:text-primary transition-colors">
+                            {#if item.type === 'TRADE'}
+                                <span class="text-xs badge badge-ghost badge-sm">TRADE</span>
+                            {:else if item.type === 'RESOLUTION'}
+                                <span class="text-xs badge badge-success badge-sm">RESOLVED</span>
+                            {:else}
+                                <span class="text-xs badge badge-info badge-sm">NEW</span>
+                            {/if}
+                            <span>{item.message}</span>
+                            <span class="opacity-50 text-xs ml-1">{formatTime(item.timestamp)}</span>
+                        </a>
+                    {/each}
+                </div>
+            {/if}
         {:else}
             <span class="opacity-50">No recent activity.</span>
         {/if}

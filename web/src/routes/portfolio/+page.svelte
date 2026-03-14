@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { formatPricePerShare, formatShares, formatUO } from '$lib/utils/format';
+
     let { data } = $props<{
         data: {
             positions: Array<{
@@ -25,12 +27,11 @@
 
 <div class="mb-8">
     <h1 class="text-3xl font-bold mb-6">Your Portfolio</h1>
-    
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <!-- Positions Section -->
         <section>
             <h2 class="text-xl font-semibold mb-4 border-b border-base-300 pb-2">Active Positions</h2>
-            
+
             {#if data.positions.length > 0}
                 <div class="flex flex-col gap-4">
                     {#each data.positions as pos (pos.id)}
@@ -39,9 +40,9 @@
                                 <h3 class="font-bold">{pos.outcome.market.question}</h3>
                                 <div class="flex justify-between items-center mt-2">
                                     <div class="badge badge-primary">{pos.outcome.name}</div>
-                                    <div class="text-sm">
-                                        <span class="font-semibold">{pos.sharesOwned} shares</span>
-                                        <span class="opacity-70 ml-2">@ {pos.averageCost.toFixed(2)} pts</span>
+                                    <div class="text-sm text-right">
+                                        <div class="font-semibold">{formatShares(pos.sharesOwned, { maximumFractionDigits: 2 })}</div>
+                                        <div class="opacity-70">@ {formatPricePerShare(pos.averageCost, 3)}</div>
                                     </div>
                                 </div>
                             </div>
@@ -55,10 +56,9 @@
             {/if}
         </section>
 
-        <!-- Transactions Section -->
         <section>
             <h2 class="text-xl font-semibold mb-4 border-b border-base-300 pb-2">Recent Transactions</h2>
-            
+
             {#if data.transactions.length > 0}
                 <div class="overflow-x-auto bg-base-100 rounded-lg border border-base-200">
                     <table class="table table-sm w-full">
@@ -66,7 +66,7 @@
                             <tr class="bg-base-200">
                                 <th>Type</th>
                                 <th>Shares</th>
-                                <th>Points</th>
+                                <th>UO</th>
                                 <th>Date</th>
                             </tr>
                         </thead>
@@ -78,9 +78,15 @@
                                             {tx.type}
                                         </div>
                                     </td>
-                                    <td>{tx.shares ?? '-'}</td>
-                                    <td class={tx.type === 'BUY' ? 'text-error' : 'text-success'}>
-                                        {tx.type === 'BUY' ? '-' : '+'}{tx.amount.toFixed(2)}
+                                    <td>
+                                        {#if tx.shares == null}
+                                            -
+                                        {:else}
+                                            {formatShares(Math.abs(tx.shares), { maximumFractionDigits: 2 })}
+                                        {/if}
+                                    </td>
+                                    <td class={tx.amount >= 0 ? 'text-success' : 'text-error'}>
+                                        {tx.amount >= 0 ? '+' : '-'}{formatUO(Math.abs(tx.amount), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </td>
                                     <td class="text-xs opacity-70">
                                         {new Date(tx.createdAt).toLocaleDateString()}

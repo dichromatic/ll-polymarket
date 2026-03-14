@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { POST } from './+server';
 import { prisma } from '$lib/server/prisma';
+import { clearIntegrationTestData, scopedTestId } from '$lib/server/test-db';
 
 function createMockRequest(body: any, auth: string = 'dev_internal_token_123'): any {
     return {
@@ -24,45 +25,43 @@ describe('Internal API: Void/Cancel Market Endpoint', () => {
     let testMarket: any;
 
     beforeEach(async () => {
-        // Clear DB
-        await prisma.transaction.deleteMany();
-        await prisma.position.deleteMany();
-        await prisma.outcome.deleteMany();
-        await prisma.market.deleteMany();
-        await prisma.event.deleteMany();
-        await prisma.category.deleteMany();
-        await prisma.user.deleteMany();
+        await clearIntegrationTestData(prisma);
 
         testUser1 = await prisma.user.create({
-            data: { id: 'user_a', username: 'UserA', balance: 100 }
+            data: { id: scopedTestId('void-user-a'), username: 'UserA', balance: 100 }
         });
 
         testUser2 = await prisma.user.create({
-            data: { id: 'user_b', username: 'UserB', balance: 200 }
+            data: { id: scopedTestId('void-user-b'), username: 'UserB', balance: 200 }
         });
 
         testCategory = await prisma.category.create({
-            data: { name: 'Testing' }
+            data: { id: scopedTestId('void-category'), name: scopedTestId('Testing') }
         });
 
         testEvent = await prisma.event.create({
-            data: { name: 'Test Event', categoryId: testCategory.id }
+            data: {
+                id: scopedTestId('void-event'),
+                name: scopedTestId('Test Event'),
+                categoryId: testCategory.id
+            }
         });
 
         testMarket = await prisma.market.create({
             data: {
+                id: scopedTestId('void-market'),
                 eventId: testEvent.id,
                 creatorId: testUser1.id,
                 tier: 'MAIN_BOARD',
                 template: 'BINARY',
                 status: 'OPEN',
-                question: 'Will this be canceled?',
+                question: scopedTestId('Will this be canceled?'),
                 resolutionRules: 'Strictly yes',
                 liquidity_b: 100,
                 outcomes: {
                     create: [
-                        { name: 'Yes', sharesOutstanding: 150 },
-                        { name: 'No', sharesOutstanding: 50 }
+                        { id: scopedTestId('void-outcome-yes'), name: 'Yes', sharesOutstanding: 150 },
+                        { id: scopedTestId('void-outcome-no'), name: 'No', sharesOutstanding: 50 }
                     ]
                 }
             },
@@ -89,6 +88,7 @@ describe('Internal API: Void/Cancel Market Endpoint', () => {
     });
 
     afterAll(async () => {
+        await clearIntegrationTestData(prisma);
         await prisma.$disconnect();
     });
 

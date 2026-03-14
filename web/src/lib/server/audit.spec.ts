@@ -1,25 +1,30 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createAuditLog } from './audit';
 import { prisma } from './prisma';
 import { AdminActionType } from '@prisma/client';
+import { clearIntegrationTestData, scopedTestId } from './test-db';
 
 describe('Audit Logging System', () => {
     beforeEach(async () => {
-        await prisma.auditLog.deleteMany();
+        await clearIntegrationTestData(prisma as any);
+    });
+
+    afterEach(async () => {
+        await clearIntegrationTestData(prisma as any);
     });
 
     it('creates an audit log entry properly via the utility function', async () => {
         const result = await createAuditLog(
             AdminActionType.MARKET_RESOLVED,
-            'test-market-id',
-            'test-admin-id',
+            scopedTestId('audit-market-id'),
+            scopedTestId('audit-admin-id'),
             { outcomeWon: 'Yes', originalLiquidity: 100 }
         );
 
         expect(result).toBeDefined();
         expect(result.action).toBe(AdminActionType.MARKET_RESOLVED);
-        expect(result.entityId).toBe('test-market-id');
-        expect(result.actorId).toBe('test-admin-id');
+        expect(result.entityId).toBe(scopedTestId('audit-market-id'));
+        expect(result.actorId).toBe(scopedTestId('audit-admin-id'));
 
         // details object will be returned as loosely typed JSON
         const details = result.details as any;
@@ -35,16 +40,18 @@ describe('Audit Logging System', () => {
         await prisma.$transaction(async (tx) => {
             await createAuditLog(
                 AdminActionType.MARKET_VOIDED,
-                'tx-market-id',
-                'tx-admin-id',
+                scopedTestId('tx-market-id'),
+                scopedTestId('tx-admin-id'),
                 { reason: 'event cancelled' },
                 tx
             );
         });
 
-        const logs = await prisma.auditLog.findMany();
+        const logs = await prisma.auditLog.findMany({
+            where: { entityId: scopedTestId('tx-market-id') }
+        });
         expect(logs.length).toBe(1);
         expect(logs[0].action).toBe(AdminActionType.MARKET_VOIDED);
-        expect(logs[0].entityId).toBe('tx-market-id');
+        expect(logs[0].entityId).toBe(scopedTestId('tx-market-id'));
     });
 });

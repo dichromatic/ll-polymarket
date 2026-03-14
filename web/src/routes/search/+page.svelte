@@ -13,6 +13,17 @@
             }
         }
     }>();
+
+    function buildStatusHref(status: 'OPEN' | 'RESOLVED') {
+        const params = new URLSearchParams();
+        params.set('status', status);
+
+        if (data.filters.q) params.set('q', data.filters.q);
+        if (data.filters.tier) params.set('tier', data.filters.tier);
+        if (data.filters.template) params.set('template', data.filters.template);
+
+        return `?${params.toString()}`;
+    }
 </script>
 
 <div class="mb-10 text-center sm:text-left">
@@ -22,11 +33,11 @@
 
 <!-- Tabs for OPEN / RESOLVED -->
 <div class="tabs tabs-boxed mb-6 bg-base-200 max-w-xs p-1">
-    <a href="?status=OPEN{data.filters.q ? '&q=' + encodeURIComponent(data.filters.q) : ''}" 
+    <a href={buildStatusHref('OPEN')} 
        class="tab flex-1 {data.filters.status === 'OPEN' ? 'tab-active font-bold bg-base-100 shadow-sm' : ''}">
         Active Markets
     </a>
-    <a href="?status=RESOLVED{data.filters.q ? '&q=' + encodeURIComponent(data.filters.q) : ''}" 
+    <a href={buildStatusHref('RESOLVED')} 
        class="tab flex-1 {data.filters.status === 'RESOLVED' ? 'tab-active font-bold bg-base-100 shadow-sm' : ''}">
         Resolved
     </a>

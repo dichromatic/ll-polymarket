@@ -30,7 +30,15 @@ describe('Search Page Server Load', () => {
         status: { in: ['PROPOSED', 'OPEN', 'DISPUTED'] }
       },
       include: {
-        outcomes: { orderBy: { id: 'asc' } }
+        outcomes: { orderBy: { id: 'asc' } },
+        event: {
+          select: {
+            name: true,
+            category: {
+              select: { name: true }
+            }
+          }
+        }
       },
       orderBy: { createdAt: 'desc' }
     });

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { POST } from './+server';
 import { prisma } from '$lib/server/prisma';
+import { clearIntegrationTestData, scopedTestId } from '$lib/server/test-db';
 
 function createMockRequest(body: any, auth: string = 'dev_internal_token_123'): any {
     return {
@@ -22,33 +23,41 @@ describe('Internal API: Propose Market Endpoint', () => {
     let testEvent: any;
 
     beforeEach(async () => {
-        // Clear DB
-        await prisma.transaction.deleteMany();
-        await prisma.position.deleteMany();
-        await prisma.outcome.deleteMany();
-        await prisma.market.deleteMany();
-        await prisma.event.deleteMany();
-        await prisma.category.deleteMany();
-        await prisma.user.deleteMany();
+        await clearIntegrationTestData(prisma);
 
         testUser = await prisma.user.create({
-            data: { id: 'user_regular', username: 'RegularJoe', balance: 1000, isAdmin: false }
+            data: {
+                id: scopedTestId('propose-user-regular'),
+                username: 'RegularJoe',
+                balance: 1000,
+                isAdmin: false
+            }
         });
 
         testAdmin = await prisma.user.create({
-            data: { id: 'user_admin', username: 'AdminAlice', balance: 10000, isAdmin: true }
+            data: {
+                id: scopedTestId('propose-user-admin'),
+                username: 'AdminAlice',
+                balance: 10000,
+                isAdmin: true
+            }
         });
 
         testCategory = await prisma.category.create({
-            data: { name: 'Testing' }
+            data: { id: scopedTestId('propose-category'), name: scopedTestId('Testing') }
         });
 
         testEvent = await prisma.event.create({
-            data: { name: 'Test Event', categoryId: testCategory.id }
+            data: {
+                id: scopedTestId('propose-event'),
+                name: scopedTestId('Test Event'),
+                categoryId: testCategory.id
+            }
         });
     });
 
     afterAll(async () => {
+        await clearIntegrationTestData(prisma);
         await prisma.$disconnect();
     });
 

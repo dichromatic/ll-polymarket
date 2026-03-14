@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { onDestroy } from 'svelte';
     import { goto } from '$app/navigation';
     import { page } from '$app/state';
 
@@ -10,9 +11,10 @@
         }
     }>();
 
-    let searchQuery = $state(currentFilters?.q || '');
-    let selectedTier = $state(currentFilters?.tier || '');
-    let selectedTemplate = $state(currentFilters?.template || '');
+    let searchQuery = $state('');
+    let selectedTier = $state('');
+    let selectedTemplate = $state('');
+    let searchDebounceTimer = $state<ReturnType<typeof setTimeout> | null>(null);
 
     // Sync state when props change
     $effect(() => {
@@ -36,12 +38,34 @@
         goto(url.toString(), { keepFocus: true, noScroll: true });
     }
 
+    function scheduleFilterUpdate() {
+        if (searchDebounceTimer) {
+            clearTimeout(searchDebounceTimer);
+        }
+
+        searchDebounceTimer = setTimeout(() => {
+            updateFilters();
+            searchDebounceTimer = null;
+        }, 300);
+    }
+
     function clearFilters() {
+        if (searchDebounceTimer) {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = null;
+        }
+
         searchQuery = '';
         selectedTier = '';
         selectedTemplate = '';
         updateFilters();
     }
+
+    onDestroy(() => {
+        if (searchDebounceTimer) {
+            clearTimeout(searchDebounceTimer);
+        }
+    });
 </script>
 
 <div class="bg-base-200 p-3 rounded-lg shadow-inner mb-6 flex flex-col sm:flex-row gap-3 items-center border border-base-300 w-full">
@@ -52,7 +76,7 @@
             placeholder="Search markets..." 
             class="input input-sm input-bordered w-full pl-9 bg-base-100 h-10" 
             bind:value={searchQuery}
-            oninput={updateFilters}
+            oninput={scheduleFilterUpdate}
         />
     </div>
     

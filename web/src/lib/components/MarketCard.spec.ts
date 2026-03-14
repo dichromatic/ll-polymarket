@@ -22,7 +22,7 @@ describe('MarketCard Component', () => {
 
     it('renders the market tier indicator', () => {
         render(MarketCard, { market: mockMarket });
-        expect(screen.getByText('MAIN_BOARD')).toBeInTheDocument();
+        expect(screen.getByText('Main')).toBeInTheDocument();
     });
 
     it('renders the outcomes with basic info', () => {
@@ -31,16 +31,15 @@ describe('MarketCard Component', () => {
         expect(screen.getAllByText(/No/i).length).toBeGreaterThan(0);
     });
 
-    it('renders a View Market link for OPEN markets', () => {
+    it('renders a market detail link for OPEN markets', () => {
         render(MarketCard, { market: mockMarket });
-        expect(screen.getByRole('link', { name: /View Market/i })).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /Trade/i })).not.toBeInTheDocument();
+        expect(screen.getByRole('link')).toHaveAttribute('href', '/m/market-123');
     });
 
-    it('renders a View Results link for RESOLVED markets', () => {
+    it('renders a market detail link for RESOLVED markets', () => {
         const resolvedMarket = { ...mockMarket, status: 'RESOLVED' };
         render(MarketCard, { market: resolvedMarket });
-        expect(screen.getByRole('link', { name: /View Results/i })).toBeInTheDocument();
+        expect(screen.getByRole('link')).toHaveAttribute('href', '/m/market-123');
         expect(screen.getByText(/RESOLVED/i)).toBeInTheDocument();
     });
 });

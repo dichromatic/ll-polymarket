@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { POST } from './+server';
 import { prisma } from '$lib/server/prisma';
+import { clearIntegrationTestData, scopedTestId } from '$lib/server/test-db';
 
 function createMockRequest(body: any, auth: string = 'dev_internal_token_123'): any {
     return {
@@ -22,41 +23,39 @@ describe('Internal API: Sell Shares Endpoint', () => {
     let testMarket: any;
 
     beforeEach(async () => {
-        // Clear DB
-        await prisma.transaction.deleteMany();
-        await prisma.position.deleteMany();
-        await prisma.outcome.deleteMany();
-        await prisma.market.deleteMany();
-        await prisma.event.deleteMany();
-        await prisma.category.deleteMany();
-        await prisma.user.deleteMany();
+        await clearIntegrationTestData(prisma);
 
         testUser = await prisma.user.create({
-            data: { id: 'user_seller', username: 'SellerSam', balance: 500 }
+            data: { id: scopedTestId('sell-user-seller'), username: 'SellerSam', balance: 500 }
         });
 
         testCategory = await prisma.category.create({
-            data: { name: 'Testing' }
+            data: { id: scopedTestId('sell-category'), name: scopedTestId('Testing') }
         });
 
         testEvent = await prisma.event.create({
-            data: { name: 'Test Event', categoryId: testCategory.id }
+            data: {
+                id: scopedTestId('sell-event'),
+                name: scopedTestId('Test Event'),
+                categoryId: testCategory.id
+            }
         });
 
         testMarket = await prisma.market.create({
             data: {
+                id: scopedTestId('sell-market'),
                 eventId: testEvent.id,
                 creatorId: testUser.id,
                 tier: 'MAIN_BOARD',
                 template: 'BINARY',
                 status: 'OPEN',
-                question: 'Will Sam sell his shares?',
+                question: scopedTestId('Will Sam sell his shares?'),
                 resolutionRules: 'Yes',
                 liquidity_b: 100, // b=100
                 outcomes: {
                     create: [
-                        { name: 'Yes', sharesOutstanding: 0 },
-                        { name: 'No', sharesOutstanding: 0 }
+                        { id: scopedTestId('sell-outcome-yes'), name: 'Yes', sharesOutstanding: 0 },
+                        { id: scopedTestId('sell-outcome-no'), name: 'No', sharesOutstanding: 0 }
                     ]
                 }
             },
@@ -90,6 +89,7 @@ describe('Internal API: Sell Shares Endpoint', () => {
     });
 
     afterAll(async () => {
+        await clearIntegrationTestData(prisma);
         await prisma.$disconnect();
     });
 

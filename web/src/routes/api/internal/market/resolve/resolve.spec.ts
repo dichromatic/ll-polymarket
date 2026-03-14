@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { POST } from './+server';
 import { prisma } from '$lib/server/prisma';
+import { clearIntegrationTestData, scopedTestId } from '$lib/server/test-db';
 
 function createMockRequest(body: any, auth: string = 'dev_internal_token_123'): any {
     return {
@@ -24,45 +25,43 @@ describe('Internal API: Resolve Market Endpoint', () => {
     let testMarket: any;
 
     beforeEach(async () => {
-        // Clear DB
-        await prisma.transaction.deleteMany();
-        await prisma.position.deleteMany();
-        await prisma.outcome.deleteMany();
-        await prisma.market.deleteMany();
-        await prisma.event.deleteMany();
-        await prisma.category.deleteMany();
-        await prisma.user.deleteMany();
+        await clearIntegrationTestData(prisma);
 
         testUser1 = await prisma.user.create({
-            data: { id: 'user_winner', username: 'WinnerDave', balance: 500 }
+            data: { id: scopedTestId('resolve-user-winner'), username: 'WinnerDave', balance: 500 }
         });
 
         testUser2 = await prisma.user.create({
-            data: { id: 'user_loser', username: 'LoserBob', balance: 500 }
+            data: { id: scopedTestId('resolve-user-loser'), username: 'LoserBob', balance: 500 }
         });
 
         testCategory = await prisma.category.create({
-            data: { name: 'Testing' }
+            data: { id: scopedTestId('resolve-category'), name: scopedTestId('Testing') }
         });
 
         testEvent = await prisma.event.create({
-            data: { name: 'Test Event', categoryId: testCategory.id }
+            data: {
+                id: scopedTestId('resolve-event'),
+                name: scopedTestId('Test Event'),
+                categoryId: testCategory.id
+            }
         });
 
         testMarket = await prisma.market.create({
             data: {
+                id: scopedTestId('resolve-market'),
                 eventId: testEvent.id,
                 creatorId: testUser1.id,
                 tier: 'MAIN_BOARD',
                 template: 'BINARY',
                 status: 'OPEN',
-                question: 'Resolution payout test?',
+                question: scopedTestId('Resolution payout test?'),
                 resolutionRules: 'Strictly yes',
                 liquidity_b: 100,
                 outcomes: {
                     create: [
-                        { name: 'Yes', sharesOutstanding: 150 },
-                        { name: 'No', sharesOutstanding: 50 }
+                        { id: scopedTestId('resolve-outcome-yes'), name: 'Yes', sharesOutstanding: 150 },
+                        { id: scopedTestId('resolve-outcome-no'), name: 'No', sharesOutstanding: 50 }
                     ]
                 }
             },
@@ -91,6 +90,7 @@ describe('Internal API: Resolve Market Endpoint', () => {
     });
 
     afterAll(async () => {
+        await clearIntegrationTestData(prisma);
         await prisma.$disconnect();
     });
 

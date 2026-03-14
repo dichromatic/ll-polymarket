@@ -1,15 +1,10 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { invalidateAll } from '$app/navigation';
+    import { invalidate } from '$app/navigation';
     import AnalyticsChart from '$lib/components/AnalyticsChart.svelte';
     import TradeWidget from '$lib/components/TradeWidget.svelte';
-    
-    onMount(() => {
-        const interval = setInterval(() => {
-            invalidateAll();
-        }, 1000);
-        return () => clearInterval(interval);
-    });
+    import { LMSR } from '$lib/amm/lmsr';
+    import { formatPricePerShare, formatShares, formatUO } from '$lib/utils/format';
 
     let { data } = $props<{
         data: {
@@ -20,6 +15,7 @@
                 status: string;
                 tier: string;
                 template: string;
+                liquidity_b: number;
                 event: {
                     id: string;
                     name: string;
@@ -34,7 +30,8 @@
                     type: string;
                     amount: number;
                     shares: number;
-                    user: { username: string; }
+                    createdAt: string;
+                    user: { username: string };
                 }>;
             };
             userPositions: Array<{
@@ -47,6 +44,23 @@
 
     let m = $derived(data.market);
     let p = $derived(data.userPositions);
+    let outcomePrices = $derived(
+        m.outcomes.length
+            ? LMSR.getPrices(m.liquidity_b, m.outcomes.map((o: { sharesOutstanding: number }) => o.sharesOutstanding))
+            : []
+    );
+
+    onMount(() => {
+        if (m.status !== 'OPEN') {
+            return;
+        }
+
+        const interval = setInterval(() => {
+            invalidate((url) => url.pathname === `/m/${m.id}`);
+        }, 5000);
+
+        return () => clearInterval(interval);
+    });
 </script>
 
 <div class="mb-8">
@@ -54,7 +68,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
         {m.event.name}
     </a>
-    
+
     <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
             <div class="flex items-center gap-2 mb-2">
@@ -72,16 +86,13 @@
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-    <!-- Left Column: Analytics (Chart & History) -->
     <div class="lg:col-span-2 space-y-8">
-        <!-- Probability Chart Component -->
-        <AnalyticsChart outcomes={m.outcomes} template={m.template} />
+        <AnalyticsChart outcomes={m.outcomes} template={m.template} liquidityB={m.liquidity_b} />
 
-        <!-- Transaction Feed -->
         <div class="card bg-base-100 shadow-md border border-base-200">
             <div class="card-body">
                 <h2 class="card-title text-xl mb-4">Recent Transactions</h2>
-                
+
                 {#if m.transactions.length === 0}
                     <div class="text-center p-6 bg-base-200 rounded-lg opacity-70">
                         No trading history yet. Be the first!
@@ -93,20 +104,37 @@
                                 <tr>
                                     <th>User</th>
                                     <th>Action</th>
+                                    <th>When</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {#each m.transactions as tx}
+                                    {@const shareCount = Math.abs(tx.shares || 0)}
+                                    {@const amountUO = Math.abs(tx.amount || 0)}
+                                    {@const avgPrice = shareCount > 0 ? amountUO / shareCount : 0}
                                     <tr>
                                         <td class="font-semibold">{tx.user.username}</td>
                                         <td>
                                             {#if tx.type === 'BUY'}
-                                                <span class="text-success font-medium">bought {Math.round(tx.shares || 0)} shares for {Math.abs(tx.amount).toFixed(0)} pts</span>
+                                                <span class="text-success font-medium">
+                                                    bought {formatShares(shareCount, { maximumFractionDigits: 2 })} for {formatUO(amountUO, { maximumFractionDigits: 2 })}
+                                                    {#if shareCount > 0}
+                                                        <span class="opacity-70">(avg {formatPricePerShare(avgPrice, 3)})</span>
+                                                    {/if}
+                                                </span>
                                             {:else if tx.type === 'SELL'}
-                                                <span class="text-warning font-medium">sold {Math.round(tx.shares || 0)} shares for {Math.abs(tx.amount).toFixed(0)} pts</span>
+                                                <span class="text-warning font-medium">
+                                                    sold {formatShares(shareCount, { maximumFractionDigits: 2 })} for {formatUO(amountUO, { maximumFractionDigits: 2 })}
+                                                    {#if shareCount > 0}
+                                                        <span class="opacity-70">(avg {formatPricePerShare(avgPrice, 3)})</span>
+                                                    {/if}
+                                                </span>
                                             {:else}
                                                 <span class="text-error font-medium">{tx.type}</span>
                                             {/if}
+                                        </td>
+                                        <td class="text-xs opacity-70 whitespace-nowrap">
+                                            {new Date(tx.createdAt).toLocaleString()}
                                         </td>
                                     </tr>
                                 {/each}
@@ -118,18 +146,20 @@
         </div>
     </div>
 
-    <!-- Right Column: Action Box / Order Book -->
-    <div class="space-y-6">
+    <div class="space-y-6 lg:sticky lg:top-24 lg:self-start">
         <TradeWidget market={m} userPositions={p} />
 
         <div class="card bg-base-200 shadow-sm">
             <div class="card-body p-5">
                 <h3 class="font-bold mb-2">Outcome Depth</h3>
                 <ul class="space-y-2">
-                    {#each m.outcomes as outcome}
-                        <li class="flex justify-between items-center text-sm">
+                    {#each m.outcomes as outcome, i}
+                        <li class="flex justify-between items-center text-sm gap-3">
                             <span class="font-semibold truncate max-w-[150px]">{outcome.name}</span>
-                            <span class="opacity-80 badge badge-sm">{outcome.name} ({Math.round(outcome.sharesOutstanding)} shares)</span>
+                            <div class="text-right">
+                                <span class="opacity-80 badge badge-sm">{formatPricePerShare(outcomePrices[i] ?? 0, 3)}</span>
+                                <div class="text-[11px] opacity-60 mt-1">{formatShares(outcome.sharesOutstanding, { maximumFractionDigits: 0 })}</div>
+                            </div>
                         </li>
                     {/each}
                 </ul>

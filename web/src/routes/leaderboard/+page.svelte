@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { formatUO } from '$lib/utils/format';
+
     let { data } = $props<{
         data: {
             leaderboard: Array<{
@@ -47,13 +49,13 @@
                             </a>
                         </td>
                         <td class="text-right font-mono">
-                            {user.balance.toFixed(0)} pts
+                            {formatUO(user.balance, { maximumFractionDigits: 0 })}
                         </td>
                         <td class="text-right font-mono text-base-content/70 hidden sm:table-cell">
-                            {user.portfolioValue.toFixed(0)} pts
+                            {formatUO(user.portfolioValue, { maximumFractionDigits: 0 })}
                         </td>
                         <td class="text-right font-mono font-bold text-primary">
-                            {user.netWorth.toFixed(0)} pts
+                            {formatUO(user.netWorth, { maximumFractionDigits: 0 })}
                         </td>
                     </tr>
                 {:else}

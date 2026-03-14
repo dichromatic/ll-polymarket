@@ -18,7 +18,14 @@ describe('Market Analytics Page', () => {
                 { id: 'o2', name: 'London Boy', sharesOutstanding: 320 }
             ],
             transactions: [
-                { id: 't1', type: 'BUY', amount: -35.0, shares: 100, user: { username: 'Swiftie99' } }
+                {
+                    id: 't1',
+                    type: 'BUY',
+                    amount: -35.0,
+                    shares: 100,
+                    createdAt: '2026-03-12T12:00:00.000Z',
+                    user: { username: 'Swiftie99' }
+                }
             ]
         },
         userPositions: []
@@ -41,13 +48,22 @@ describe('Market Analytics Page', () => {
         expect(screen.getByText('Buy Shares')).toBeInTheDocument();
         expect(screen.getByText('Recent Transactions')).toBeInTheDocument();
         expect(screen.getByText('Swiftie99')).toBeInTheDocument();
-        expect(screen.getByText('bought 100 shares')).toBeInTheDocument();
+        expect(screen.getByText(/bought 100 shares for 35 UO/i)).toBeInTheDocument();
+        expect(screen.getByText('When')).toBeInTheDocument();
     });
 
     it('renders the outcomes summary', () => {
         render(Page, { data: mockData });
 
-        expect(screen.getByText('Exile (150 shares)')).toBeInTheDocument();
-        expect(screen.getByText('London Boy (320 shares)')).toBeInTheDocument();
+        expect(screen.getAllByText('Exile').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('London Boy').length).toBeGreaterThan(0);
+        expect(screen.getByText('150 shares')).toBeInTheDocument();
+        expect(screen.getByText('320 shares')).toBeInTheDocument();
+    });
+
+    it('keeps the trade panel sticky on desktop', () => {
+        const { container } = render(Page, { data: mockData });
+
+        expect(container.querySelector('.lg\\:sticky.lg\\:top-24')).not.toBeNull();
     });
 });

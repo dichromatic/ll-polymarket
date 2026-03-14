@@ -1,17 +1,32 @@
 <script lang="ts">
-    let { outcomes, template = 'BINARY' } = $props<{
+    import { LMSR } from '$lib/amm/lmsr';
+
+    let { outcomes, template = 'BINARY', liquidityB = 100 } = $props<{
         outcomes: Array<{
             id: string;
             name: string;
             sharesOutstanding: number;
         }>;
         template?: string;
+        liquidityB?: number;
     }>();
 
     let totalShares = $derived(outcomes.reduce((acc: number, o: { sharesOutstanding: number }) => acc + o.sharesOutstanding, 0));
-    
-    // For sorting multiple choice
-    let sortedOutcomes = $derived([...outcomes].sort((a, b) => b.sharesOutstanding - a.sharesOutstanding));
+    let prices = $derived(
+        outcomes.length
+            ? LMSR.getPrices(liquidityB, outcomes.map((o) => o.sharesOutstanding))
+            : []
+    );
+
+    let outcomesWithPrices = $derived(
+        outcomes.map((outcome, index) => ({
+            ...outcome,
+            price: prices[index] ?? 0
+        }))
+    );
+
+    // For sorting multiple choice by implied probability
+    let sortedOutcomes = $derived([...outcomesWithPrices].sort((a, b) => b.price - a.price));
 </script>
 
 <div class="card bg-base-100 shadow-md border border-base-200">
@@ -25,7 +40,7 @@
             </div>
         {:else if template === 'BINARY' && outcomes.length >= 2}
             <!-- Tug of War View -->
-            {@const leftPct = Math.round((outcomes[0].sharesOutstanding / totalShares) * 100)}
+            {@const leftPct = Math.round((prices[0] ?? 0) * 100)}
             {@const rightPct = 100 - leftPct}
             
             <div class="flex flex-col gap-4 mt-2">
@@ -50,8 +65,8 @@
         {:else if template === 'NUMERIC_BUCKET'}
             <!-- Histogram View -->
             <div class="flex items-end justify-between gap-2 h-48 mt-4 pt-8">
-                {#each outcomes as outcome, i}
-                    {@const pct = Math.round((outcome.sharesOutstanding / totalShares) * 100)}
+                {#each outcomesWithPrices as outcome}
+                    {@const pct = Math.round((outcome.price ?? 0) * 100)}
                     <div class="flex flex-col items-center justify-end h-full w-full group">
                         <span class="text-sm font-mono font-bold mb-2 opacity-0 group-hover:opacity-100 transition-opacity">{pct}%</span>
                         <div 
@@ -71,7 +86,7 @@
             <!-- Ranked List View (MULTIPLE_CHOICE, MULTI_WINNER) -->
             <div class="space-y-5">
                 {#each sortedOutcomes as outcome, i}
-                    {@const pct = Math.max(1, Math.round((outcome.sharesOutstanding / totalShares) * 100))}
+                    {@const pct = Math.max(1, Math.round((outcome.price ?? 0) * 100))}
                     {@const isTop = i === 0}
                     <div>
                         <div class="flex justify-between items-end mb-1.5 px-1">

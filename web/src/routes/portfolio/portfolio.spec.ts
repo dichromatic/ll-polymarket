@@ -33,7 +33,7 @@ describe('Portfolio Page', () => {
 
         expect(screen.getByText('Your Portfolio')).toBeInTheDocument();
         expect(screen.getByText('Will Svelte 5 release in 2024?')).toBeInTheDocument();
-        expect(screen.getByText(/50 shares/)).toBeInTheDocument();
+        expect(screen.getAllByText(/50 shares/).length).toBeGreaterThan(0);
         expect(screen.getByText('BUY')).toBeInTheDocument();
     });
 

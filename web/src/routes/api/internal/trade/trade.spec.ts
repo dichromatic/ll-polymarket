@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { POST } from './+server';
 import { prisma } from '$lib/server/prisma';
+import { clearIntegrationTestData, scopedTestId } from '$lib/server/test-db';
 
 // Helper to mock SvelteKit's RequestEvent
 function createMockRequest(body: any, auth: string = 'dev_internal_token_123'): any {
@@ -23,42 +24,40 @@ describe('Internal API: Trade Endpoint', () => {
     let testMarket: any;
 
     beforeEach(async () => {
-        // Clear DB for clean state
-        await prisma.transaction.deleteMany();
-        await prisma.position.deleteMany();
-        await prisma.outcome.deleteMany();
-        await prisma.market.deleteMany();
-        await prisma.event.deleteMany();
-        await prisma.category.deleteMany();
-        await prisma.user.deleteMany();
+        await clearIntegrationTestData(prisma);
 
         // Seed basic dependencies
         testUser = await prisma.user.create({
-            data: { id: 'user_123', username: 'TestTrader', balance: 1000 }
+            data: { id: scopedTestId('trade-user-123'), username: 'TestTrader', balance: 1000 }
         });
 
         testCategory = await prisma.category.create({
-            data: { name: 'Testing' }
+            data: { id: scopedTestId('trade-category'), name: scopedTestId('Testing') }
         });
 
         testEvent = await prisma.event.create({
-            data: { name: 'Test Event', categoryId: testCategory.id }
+            data: {
+                id: scopedTestId('trade-event'),
+                name: scopedTestId('Test Event'),
+                categoryId: testCategory.id
+            }
         });
 
         testMarket = await prisma.market.create({
             data: {
+                id: scopedTestId('trade-market'),
                 eventId: testEvent.id,
                 creatorId: testUser.id,
                 tier: 'SANDBOX',
                 template: 'BINARY',
                 status: 'OPEN',
-                question: 'Will this test pass?',
+                question: scopedTestId('Will this test pass?'),
                 resolutionRules: 'If it passes, yes.',
                 liquidity_b: 100,
                 outcomes: {
                     create: [
-                        { name: 'Yes', sharesOutstanding: 0 },
-                        { name: 'No', sharesOutstanding: 0 }
+                        { id: scopedTestId('trade-outcome-yes'), name: 'Yes', sharesOutstanding: 0 },
+                        { id: scopedTestId('trade-outcome-no'), name: 'No', sharesOutstanding: 0 }
                     ]
                 }
             },
@@ -67,6 +66,7 @@ describe('Internal API: Trade Endpoint', () => {
     });
 
     afterAll(async () => {
+        await clearIntegrationTestData(prisma);
         await prisma.$disconnect();
     });
 
